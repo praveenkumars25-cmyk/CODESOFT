@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CineMatch — Movie Recommendations</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0f;--surface:#111118;--card:#17171f;--border:#21212e;
+  --amber:#f5a623;--amber-dim:rgba(245,166,35,.12);--amber-glow:rgba(245,166,35,.25);
+  --teal:#2dd4bf;--teal-dim:rgba(45,212,191,.1);
+  --rose:#fb7185;--rose-dim:rgba(251,113,133,.1);
+  --text:#f0ece3;--muted:#52526a;--soft:#a0a0b8;
+  --font-display:'Playfair Display',Georgia,serif;
+  --font-body:'DM Sans',system-ui,sans-serif;
+  --font-mono:'DM Mono',monospace;
+  --r:14px;
+}
+html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:var(--font-body)}
+
+/* ─ HERO ─ */
+.hero{
+  text-align:center;padding:64px 20px 48px;
+  background:radial-gradient(ellipse 60% 40% at 50% 0%, rgba(245,166,35,.07) 0%, transparent 70%);
+  border-bottom:1px solid var(--border);
+}
+.hero-eyebrow{
+  font-family:var(--font-mono);font-size:11px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--amber);margin-bottom:16px;display:inline-block;
+  border:1px solid rgba(245,166,35,.25);padding:4px 14px;border-radius:99px;
+}
+.hero h1{
+  font-family:var(--font-display);font-size:clamp(36px,6vw,62px);
+  line-height:1.08;letter-spacing:-.5px;margin-bottom:14px;
+}
+.hero h1 em{font-style:italic;color:var(--amber)}
+.hero p{color:var(--soft);font-size:16px;max-width:480px;margin:0 auto 32px;line-height:1.6;font-weight:300}
+
+/* search bar */
+.search-wrap{max-width:540px;margin:0 auto;position:relative}
+.search-bar{
+  width:100%;padding:16px 56px 16px 20px;border-radius:var(--r);
+  background:var(--card);border:1px solid var(--border);
+  color:var(--text);font-family:var(--font-body);font-size:15px;outline:none;
+  transition:border-color .2s,box-shadow .2s;
+}
+.search-bar::placeholder{color:var(--muted)}
+.search-bar:focus{border-color:var(--amber);box-shadow:0 0 0 3px var(--amber-glow)}
+.search-icon{
+  position:absolute;right:14px;top:50%;transform:translateY(-50%);
+  background:var(--amber);border:none;width:32px;height:32px;border-radius:9px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;
+  transition:opacity .15s;
+}
+.search-icon:hover{opacity:.85}
+
+/* ─ TAG PILLS ─ */
+.tag-row{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin-top:20px}
+.tag-pill{
+  font-size:12px;padding:5px 13px;border-radius:99px;cursor:pointer;
+  border:1px solid var(--border);background:var(--card);color:var(--soft);
+  font-family:var(--font-mono);transition:all .15s;
+}
+.tag-pill:hover,.tag-pill.active{
+  border-color:var(--amber);color:var(--amber);background:var(--amber-dim);
+}
+
+/* ─ LAYOUT ─ */
+.page{max-width:1100px;margin:0 auto;padding:40px 20px 60px;display:grid;grid-template-columns:300px 1fr;gap:28px;align-items:start}
+@media(max-width:720px){.page{grid-template-columns:1fr}}
+
+/* ─ SIDEBAR ─ */
+.sidebar{display:flex;flex-direction:column;gap:16px;position:sticky;top:24px}
+.widget{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px}
+.widget-title{font-family:var(--font-mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+
+/* movie list */
+.movie-list{display:flex;flex-direction:column;gap:4px}
+.movie-item{
+  padding:9px 11px;border-radius:10px;cursor:pointer;display:flex;
+  align-items:center;gap:10px;transition:all .15s;border:1px solid transparent;
+}
+.movie-item:hover{background:var(--card);border-color:var(--border)}
+.movie-item.selected{background:var(--amber-dim);border-color:rgba(245,166,35,.3)}
+.movie-item.selected .mi-title{color:var(--amber)}
+.movie-thumb{
+  width:32px;height:44px;border-radius:6px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:18px;
+  background:var(--card);border:1px solid var(--border);
+}
+.mi-title{font-size:13px;font-weight:500;line-height:1.3}
+.mi-genres{font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:2px}
+
+/* genre filter */
+.genre-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.genre-btn{
+  padding:7px 10px;border-radius:8px;border:1px solid var(--border);
+  background:var(--card);color:var(--soft);font-size:12px;cursor:pointer;
+  text-align:center;transition:all .15s;font-family:var(--font-body);
+}
+.genre-btn:hover,.genre-btn.active{border-color:var(--teal);color:var(--teal);background:var(--teal-dim)}
+
+/* ─ MAIN CONTENT ─ */
+.main-content{display:flex;flex-direction:column;gap:20px}
+
+/* state banners */
+.empty-state{
+  text-align:center;padding:64px 24px;background:var(--surface);
+  border:1px solid var(--border);border-radius:var(--r);
+}
+.empty-icon{font-size:48px;margin-bottom:16px;display:block}
+.empty-state h3{font-family:var(--font-display);font-size:22px;margin-bottom:8px}
+.empty-state p{color:var(--soft);font-size:14px;line-height:1.6;max-width:360px;margin:0 auto}
+
+/* picked movie hero */
+.picked-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+  padding:20px 22px;display:flex;align-items:center;gap:16px;
+}
+.picked-poster{
+  width:56px;height:78px;border-radius:10px;flex-shrink:0;background:var(--card);
+  border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:28px;
+}
+.picked-info{flex:1}
+.picked-label{font-family:var(--font-mono);font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--amber);margin-bottom:6px}
+.picked-title{font-family:var(--font-display);font-size:22px;line-height:1.2;margin-bottom:8px}
+.tag-list{display:flex;flex-wrap:wrap;gap:5px}
+.tag{font-size:11px;padding:3px 9px;border-radius:99px;font-family:var(--font-mono);background:var(--card);border:1px solid var(--border);color:var(--soft)}
+
+/* section heading */
+.section-head{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
+.section-head h2{font-family:var(--font-display);font-size:20px}
+.section-head span{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+
+/* rec grid */
+.rec-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+
+/* rec card */
+.rec-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+  padding:18px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;
+}
+.rec-card::before{
+  content:'';position:absolute;inset:0;opacity:0;transition:opacity .2s;
+  background:radial-gradient(circle at 50% 0%, rgba(245,166,35,.07) 0%, transparent 70%);
+}
+.rec-card:hover{border-color:rgba(245,166,35,.35);transform:translateY(-2px)}
+.rec-card:hover::before{opacity:1}
+.rec-poster{
+  width:100%;aspect-ratio:2/3;max-height:120px;border-radius:9px;
+  background:var(--card);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;font-size:36px;
+  margin-bottom:12px;
+}
+.rec-title{font-size:15px;font-weight:500;margin-bottom:6px;line-height:1.3}
+.rec-tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px}
+.rec-tag{font-size:10px;padding:2px 7px;border-radius:99px;background:var(--card);border:1px solid var(--border);color:var(--muted);font-family:var(--font-mono)}
+.rec-tag.match{background:var(--amber-dim);border-color:rgba(245,166,35,.3);color:var(--amber)}
+.match-bar-wrap{margin-top:10px}
+.match-label{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-bottom:5px}
+.match-bar{height:4px;border-radius:99px;background:var(--border);overflow:hidden}
+.match-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--amber),#f97316);transition:width .6s ease}
+.match-score{font-size:12px;font-weight:500;color:var(--amber)}
+
+/* AI section */
+.ai-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:22px}
+.ai-header{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.ai-badge{
+  font-family:var(--font-mono);font-size:10px;letter-spacing:1.2px;text-transform:uppercase;
+  color:var(--teal);border:1px solid rgba(45,212,191,.25);padding:3px 10px;border-radius:99px;
+  background:var(--teal-dim);
+}
+.ai-output{font-size:14px;line-height:1.8;color:var(--soft)}
+.ai-output strong{color:var(--text);font-weight:500}
+.ai-thinking{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;font-family:var(--font-mono)}
+.think-dot{width:6px;height:6px;border-radius:50%;background:var(--teal);animation:td 1.2s infinite}
+.think-dot:nth-child(2){animation-delay:.2s}.think-dot:nth-child(3){animation-delay:.4s}
+@keyframes td{0%,80%,100%{opacity:.2;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
+
+/* ─ TOAST ─ */
+.toast{
+  position:fixed;bottom:24px;right:24px;background:var(--card);border:1px solid var(--border);
+  border-radius:12px;padding:12px 18px;font-size:13px;color:var(--text);
+  opacity:0;transform:translateY(8px);transition:all .3s;pointer-events:none;z-index:99;
+}
+.toast.show{opacity:1;transform:translateY(0)}
+
+/* mobile */
+@media(max-width:720px){
+  .sidebar{position:static}
+  .hero{padding:40px 16px 32px}
+  .page{padding:20px 12px 40px}
+}
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-eyebrow">🎬 AI-Powered Discovery</div>
+  <h1>Find your next<br><em>favourite film</em></h1>
+  <p>Pick a movie you loved. Our algorithm — plus an AI brain — surfaces what to watch next.</p>
+  <div class="search-wrap">
+    <input class="search-bar" id="searchInput" type="text" placeholder="Search or type a movie title…" autocomplete="off">
+    <button class="search-icon" onclick="doSearch()" title="Search">🔍</button>
+  </div>
+  <div class="tag-row" id="genreTagRow"></div>
+</section>
+
+<div class="page">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="widget">
+      <div class="widget-title">Movie Library</div>
+      <div class="movie-list" id="movieList"></div>
+    </div>
+    <div class="widget">
+      <div class="widget-title">Filter by Genre</div>
+      <div class="genre-grid" id="genreGrid"></div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main-content" id="mainContent">
+    <div class="empty-state">
+      <span class="empty-icon">🎥</span>
+      <h3>What did you last enjoy?</h3>
+      <p>Select a movie from the library or search above. We'll match it against our catalogue and explain why each pick suits your taste.</p>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════
+// DATASET — Python dict ported exactly
+// ══════════════════════════════════════════
+const MOVIES = {
+  "The Matrix":        { tags:["sci-fi","action","keanu reeves"],            emoji:"🕶️" },
+  "Inception":         { tags:["sci-fi","thriller","dicaprio"],               emoji:"🌀" },
+  "Interstellar":      { tags:["sci-fi","drama","space"],                     emoji:"🚀" },
+  "The Dark Knight":   { tags:["action","thriller","batman"],                 emoji:"🦇" },
+  "Superbad":          { tags:["comedy","teen"],                              emoji:"😂" },
+  "The Hangover":      { tags:["comedy","las vegas"],                         emoji:"🎰" },
+  "Gladiator":         { tags:["action","drama","history"],                   emoji:"⚔️" },
+  "Blade Runner 2049": { tags:["sci-fi","drama","neo-noir"],                  emoji:"🌆" },
+  "Mad Max: Fury Road":{ tags:["action","sci-fi","post-apocalyptic"],         emoji:"🚗" },
+  "Parasite":          { tags:["thriller","drama","korean"],                  emoji:"🏠" },
+  "The Grand Budapest Hotel":{ tags:["comedy","drama","quirky"],              emoji:"🏨" },
+  "Arrival":           { tags:["sci-fi","drama","linguistics"],               emoji:"🛸" },
+  "John Wick":         { tags:["action","thriller","keanu reeves"],           emoji:"🐶" },
+  "Get Out":           { tags:["thriller","horror","social commentary"],      emoji:"👁️" },
+  "La La Land":        { tags:["drama","romance","musical"],                  emoji:"🎶" },
+};
+
+// ══════════════════════════════════════════
+// RECOMMENDATION ENGINE (Python logic → JS)
+// ══════════════════════════════════════════
+function recommend(movieTitle) {
+  const target = MOVIES[movieTitle];
+  if (!target) return [];
+  const scores = {};
+  for (const [name, data] of Object.entries(MOVIES)) {
+    if (name === movieTitle) continue;
+    const overlap = target.tags.filter(t => data.tags.includes(t));
+    if (overlap.length > 0) scores[name] = { score: overlap.length, matched: overlap };
+  }
+  return Object.entries(scores)
+    .sort((a,b) => b[1].score - a[1].score)
+    .map(([name, val]) => ({ name, ...val }));
+}
+
+// ══════════════════════════════════════════
+// AI EXPLAINER via Claude API
+// ══════════════════════════════════════════
+async function getAIExplanation(liked, recs) {
+  const recList = recs.slice(0,5).map(r => `${r.name} (matched on: ${r.matched.join(', ')})`).join('\n');
+  const prompt = `A user liked the movie "${liked}". Based on tag similarity, the recommendation engine returned:\n${recList}\n\nWrite a warm, enthusiastic 2–3 sentence explanation of why these recommendations suit someone who enjoyed "${liked}". Mention specific shared qualities. Keep it concise and conversational. Do not use bullet points.`;
+  const res = await fetch("https://api.anthropic.com/v1/messages",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      model:"claude-sonnet-4-6",max_tokens:1000,
+      messages:[{role:"user",content:prompt}]
+    })
+  });
+  const data = await res.json();
+  return data.content?.map(b=>b.text||'').join('').trim();
+}
+
+// ══════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════
+let selectedMovie = null;
+let activeGenre = null;
+let searchQuery = '';
+
+// ══════════════════════════════════════════
+// RENDER SIDEBAR
+// ══════════════════════════════════════════
+function allGenres() {
+  const set = new Set();
+  Object.values(MOVIES).forEach(m => m.tags.forEach(t => set.add(t)));
+  return [...set].sort();
+}
+
+function renderSidebar() {
+  const list = document.getElementById('movieList');
+  list.innerHTML = '';
+  const q = searchQuery.toLowerCase();
+  const movies = Object.entries(MOVIES).filter(([name, data]) => {
+    const matchSearch = !q || name.toLowerCase().includes(q);
+    const matchGenre = !activeGenre || data.tags.includes(activeGenre);
+    return matchSearch && matchGenre;
+  });
+  movies.forEach(([name, data]) => {
+    const el = document.createElement('div');
+    el.className = 'movie-item' + (name===selectedMovie?' selected':'');
+    el.innerHTML = `<div class="movie-thumb">${data.emoji}</div><div><div class="mi-title">${name}</div><div class="mi-genres">${data.tags.slice(0,2).join(' · ')}</div></div>`;
+    el.onclick = () => selectMovie(name);
+    list.appendChild(el);
+  });
+  if (!movies.length) list.innerHTML = `<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">No matches found</div>`;
+}
+
+function renderGenreFilter() {
+  const grid = document.getElementById('genreGrid');
+  const tagRow = document.getElementById('genreTagRow');
+  const genres = allGenres().slice(0,12);
+  grid.innerHTML = '';
+  tagRow.innerHTML = '';
+  genres.forEach(g => {
+    const btn = document.createElement('button');
+    btn.className = 'genre-btn' + (g===activeGenre?' active':'');
+    btn.textContent = g;
+    btn.onclick = () => { activeGenre = activeGenre===g ? null : g; renderAll(); };
+    grid.appendChild(btn);
+    const pill = document.createElement('span');
+    pill.className = 'tag-pill' + (g===activeGenre?' active':'');
+    pill.textContent = g;
+    pill.onclick = () => { activeGenre = activeGenre===g ? null : g; renderAll(); };
+    tagRow.appendChild(pill);
+  });
+}
+
+function renderAll() { renderSidebar(); renderGenreFilter(); }
+
+// ══════════════════════════════════════════
+// RENDER RECOMMENDATIONS
+// ══════════════════════════════════════════
+async function selectMovie(name) {
+  selectedMovie = name;
+  renderAll();
+  const movie = MOVIES[name];
+  const recs = recommend(name);
+  const main = document.getElementById('mainContent');
+  const maxScore = recs[0]?.score || 1;
+
+  // picked card
+  let html = `
+    <div class="picked-card">
+      <div class="picked-poster">${movie.emoji}</div>
+      <div class="picked-info">
+        <div class="picked-label">Because you liked</div>
+        <div class="picked-title">${name}</div>
+        <div class="tag-list">${movie.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+      </div>
+    </div>`;
+
+  if (recs.length) {
+    html += `<div class="section-head"><h2>Recommended for you</h2><span>${recs.length} matches</span></div>`;
+    html += `<div class="rec-grid">`;
+    recs.forEach(r => {
+      const m = MOVIES[r.name];
+      const pct = Math.round((r.score/maxScore)*100);
+      const allTags = m.tags.map(t => {
+        const isMatch = r.matched.includes(t);
+        return `<span class="rec-tag ${isMatch?'match':''}">${t}</span>`;
+      }).join('');
+      html += `
+        <div class="rec-card" onclick="selectMovie('${r.name.replace(/'/g,"\\'")}')">
+          <div class="rec-poster">${m.emoji}</div>
+          <div class="rec-title">${r.name}</div>
+          <div class="rec-tags">${allTags}</div>
+          <div class="match-bar-wrap">
+            <div class="match-label"><span>Match strength</span><span class="match-score">${r.score} shared</span></div>
+            <div class="match-bar"><div class="match-fill" style="width:${pct}%"></div></div>
+          </div>
+        </div>`;
+    });
+    html += `</div>`;
+    html += `<div class="ai-section" id="aiBox">
+      <div class="ai-header"><div class="ai-badge">✦ AI Insight</div><span style="font-size:13px;color:var(--muted)">Why these picks suit you</span></div>
+      <div class="ai-thinking" id="aiThink"><div class="think-dot"></div><div class="think-dot"></div><div class="think-dot"></div><span>Analysing your taste…</span></div>
+      <div class="ai-output" id="aiOut" style="display:none"></div>
+    </div>`;
+  } else {
+    html += `<div class="empty-state"><span class="empty-icon">🔍</span><h3>No close matches</h3><p>Our current library doesn't have films with overlapping tags. Try another title!</p></div>`;
+  }
+
+  main.innerHTML = html;
+
+  // Kick off AI after render
+  if (recs.length) {
+    try {
+      const text = await getAIExplanation(name, recs);
+      const thinking = document.getElementById('aiThink');
+      const output = document.getElementById('aiOut');
+      if (thinking && output) {
+        thinking.style.display = 'none';
+        output.style.display = 'block';
+        output.innerHTML = text.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
+      }
+    } catch(e) {
+      const thinking = document.getElementById('aiThink');
+      if (thinking) thinking.innerHTML = `<span style="color:var(--muted)">AI insight unavailable right now.</span>`;
+    }
+  }
+}
+
+// ══════════════════════════════════════════
+// SEARCH
+// ══════════════════════════════════════════
+function doSearch() {
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  searchQuery = q;
+  // Direct match → auto select
+  const exact = Object.keys(MOVIES).find(n => n.toLowerCase()===q);
+  if (exact) { selectMovie(exact); searchQuery=''; document.getElementById('searchInput').value=''; }
+  renderAll();
+}
+
+document.getElementById('searchInput').addEventListener('keydown', e => {
+  if (e.key==='Enter') doSearch();
+});
+document.getElementById('searchInput').addEventListener('input', e => {
+  searchQuery = e.target.value.trim().toLowerCase();
+  renderAll();
+});
+
+// ══════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2800);
+}
+
+// ══════════════════════════════════════════
+// BOOT
+// ══════════════════════════════════════════
+renderAll();
+// Auto-pick a featured movie on load
+setTimeout(() => selectMovie("Inception"), 200);
+</script>
+</body>
+</html>
